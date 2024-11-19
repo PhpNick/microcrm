@@ -5,5 +5,5 @@ API c использованием Laravel
 Команда для заполнения справочников товаров, складов и остатков тестовыми данными:
 
 `
-db:seed-test-data
+php artisan db:seed-test-data
 `
