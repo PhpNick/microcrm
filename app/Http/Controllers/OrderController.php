@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Filters\OrderFilter;
 use App\Models\Movement;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -15,15 +16,12 @@ use Carbon\Carbon;
 
 class OrderController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, OrderFilter $filters)
     {
-        $query = Order::query();
-
-        // TODO Добавляем фильтры
-
-        // Добавляем пагинацию
         $perPage = $request->input('per_page', 5);
-        $orders = $query->paginate($perPage);
+        $page = $request->input('page', 1);
+
+        $orders = Order::filter($filters)->paginate($perPage, ['*'], 'page', $page);
 
         return $this->response($orders);
     }
