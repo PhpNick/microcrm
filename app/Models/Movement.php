@@ -11,7 +11,8 @@ class Movement extends Model
     protected $fillable = [
         'product_id',
         'warehouse_id',
-        'quantity'
+        'quantity',
+        'type'
     ];
 
     public function product()

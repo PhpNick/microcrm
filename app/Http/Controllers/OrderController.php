@@ -47,6 +47,8 @@ class OrderController extends Controller
                     'count' => $item['count'],
                 ]);
             }
+
+            $this->stock($order, 'subtraction');
         });
 
         return $this->response(['message' => 'Заказ успешно создан'], 201);
@@ -59,6 +61,8 @@ class OrderController extends Controller
         }
 
         DB::transaction(function () use ($request, $order) {
+            // Возвращаем на склад старое значение остатков по заказу
+            $this->stock($order, 'addition');
             $order->update([
                 'customer' => $request->input('customer'),
                 'warehouse_id' => $request->input('warehouse_id'),
@@ -73,6 +77,8 @@ class OrderController extends Controller
                     'count' => $item['count'],
                 ]);
             }
+
+            $this->stock($order, 'subtraction');
         });
 
         return $this->response(['message' => 'Заказ успешно обновлен']);
@@ -84,35 +90,10 @@ class OrderController extends Controller
             return $this->response(['error' => 'Не могу обновить заказ со статусом: ' . $order->status], 400);
         }
 
-        DB::transaction(function () use ($order) {
-            foreach ($order->orderItems as $item) {
-                $stock = Stock::where('product_id', $item->product_id)
-                    ->where('warehouse_id', $order->warehouse_id)
-                    ->first();
-
-                if ($stock) {
-                    if ($stock->stock < $item->count) {
-                        throw new \Exception('На складе не хватает товара с id: ' . $item->product_id);
-                    }
-
-                    $stock->stock -= $item->count;
-                    $stock->save();
-                }
-
-                // Движение товара
-                $product = Product::find($item['product_id']);
-                Movement::create([
-                    'product_id' => $product->id,
-                    'warehouse_id' => $order->warehouse_id,
-                    'quantity' => $item['count'],
-                ]);
-            }
-
-            $order->update([
-                'status' => 'completed',
-                'completed_at' =>  Carbon::now()
-            ]);
-        });
+        $order->update([
+            'status' => 'completed',
+            'completed_at' =>  Carbon::now()
+        ]);
 
         return $this->response(['message' => 'Заказ успешно завершен']);
     }
@@ -123,7 +104,10 @@ class OrderController extends Controller
             return $this->response(['error' => 'Не могу обновить заказ со статусом: ' . $order->status], 400);
         }
 
-        $order->update(['status' => 'cancelled']);
+        DB::transaction(function () use ($order) {
+            $order->update(['status' => 'cancelled']);
+            $this->stock($order, 'addition');
+        });
 
         return $this->response(['message' => 'Заказ успешно отменен']);
     }
@@ -135,7 +119,10 @@ class OrderController extends Controller
             return $this->response(['error' => 'Только отмененные заказы могут быть возобновлены'], 400);
         }
 
-        $order->update(['status' => 'active']);
+        DB::transaction(function () use ($order) {
+            $order->update(['status' => 'active']);
+            $this->stock($order, 'subtraction');
+        });
 
         return $this->response(['message' => 'Заказ успешно возобновлен']);
     }
@@ -148,6 +135,39 @@ class OrderController extends Controller
             [],
             JSON_UNESCAPED_UNICODE
         );
+    }
+
+    private function stock($order, $movementType)
+    {
+        $order->refresh();
+
+        foreach ($order->orderItems as $item) {
+            $stock = Stock::where('product_id', $item->product_id)
+                ->where('warehouse_id', $order->warehouse_id)
+                ->first();
+
+            if ($stock) {
+                if ($stock->stock < $item->count) {
+                    throw new \Exception('На складе не хватает товара с id: ' . $item->product_id);
+                }
+
+                if ($movementType == 'addition') {
+                    $stock->stock += $item->count;
+                } else {
+                    $stock->stock -= $item->count;
+                }
+                $stock->save();
+
+                // Движение товара
+                $product = Product::find($item['product_id']);
+                Movement::create([
+                    'product_id' => $product->id,
+                    'warehouse_id' => $order->warehouse_id,
+                    'quantity' => $item['count'],
+                    'type' => $movementType
+                ]);
+            }
+        }
     }
 
 }

@@ -16,6 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('product_id');
             $table->unsignedBigInteger('warehouse_id');
             $table->integer('quantity');
+            $table->enum('type', ['addition', 'subtraction']);
             $table->timestamps();
 
             $table->foreign('product_id')->references('id')->on('products');
