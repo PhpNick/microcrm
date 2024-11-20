@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MovementController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -19,3 +20,5 @@ Route::put('orders/{order}', [OrderController::class, 'update']);
 Route::post('orders/{order}/complete', [OrderController::class, 'complete']);
 Route::post('orders/{order}/cancel', [OrderController::class, 'cancel']);
 Route::post('orders/{order}/resume', [OrderController::class, 'resume']);
+Route::get('movements', [MovementController::class, 'index']);
+

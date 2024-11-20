@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Movement;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -99,6 +100,14 @@ class OrderController extends Controller
                     $stock->stock -= $item->count;
                     $stock->save();
                 }
+
+                // Движение товара
+                $product = Product::find($item['product_id']);
+                Movement::create([
+                    'product_id' => $product->id,
+                    'warehouse_id' => $order->warehouse_id,
+                    'quantity' => $item['count'],
+                ]);
             }
 
             $order->update([
