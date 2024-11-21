@@ -14,8 +14,22 @@ use Illuminate\Http\Request;
 
 use Carbon\Carbon;
 
+/**
+ * Class OrderController
+ *
+ * Управление заказами (создание, обновление, завершение, отмена, возобновление)
+ *
+ * @package App\Http\Controllers
+ */
 class OrderController extends Controller
 {
+    /**
+     * Вывод списка заказов.
+     *
+     * @param Request $request
+     * @param OrderFilter $filters
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request, OrderFilter $filters)
     {
         $perPage = $request->input('per_page', 5);
@@ -26,6 +40,13 @@ class OrderController extends Controller
         return $this->response($orders);
     }
 
+    /**
+     * Создание нового заказа
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     * @throws \Exception Если заказ не найден или нет достаточного количества товара
+     */
     public function store(Request $request)
     {
         DB::transaction(function () use ($request) {
@@ -54,6 +75,13 @@ class OrderController extends Controller
         return $this->response(['message' => 'Заказ успешно создан'], 201);
     }
 
+    /**
+     * Обновление заказа
+     *
+     * @param Request $request
+     * @param Order $order
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function update(Request $request, Order $order)
     {
         if ($order->status !== 'active') {
@@ -84,6 +112,12 @@ class OrderController extends Controller
         return $this->response(['message' => 'Заказ успешно обновлен']);
     }
 
+    /**
+     * Завершение заказа
+     *
+     * @param Order $order
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function complete(Order $order)
     {
         if ($order->status !== 'active') {
@@ -98,6 +132,12 @@ class OrderController extends Controller
         return $this->response(['message' => 'Заказ успешно завершен']);
     }
 
+    /**
+     * Отмена товара
+     *
+     * @param Order $order
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function cancel(Order $order)
     {
         if ($order->status !== 'active') {
@@ -113,6 +153,12 @@ class OrderController extends Controller
     }
 
 
+    /**
+     * Возобновление заказа
+     *
+     * @param Order $order
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function resume(Order $order)
     {
         if ($order->status !== 'cancelled') {
@@ -127,6 +173,13 @@ class OrderController extends Controller
         return $this->response(['message' => 'Заказ успешно возобновлен']);
     }
 
+    /**
+     * Генерация ответа в формате JSON с нужным статусом
+     *
+     * @param mixed $message
+     * @param int $status
+     * @return \Illuminate\Http\JsonResponse
+     */
     private function response($message, $status = 200)
     {
         return response()->json(
@@ -137,6 +190,13 @@ class OrderController extends Controller
         );
     }
 
+    /**
+     * Обновление остатков товара (списывание/возвращение)
+     *
+     * @param Order
+     * @param string $movementType Тип действия (списывание/возвращение) (addition/subtraction)
+     * @throws \Exception Если заказ не найден или нет достаточного количества товара
+     */
     private function stock($order, $movementType)
     {
         $order->refresh();
